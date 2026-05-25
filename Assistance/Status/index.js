@@ -25,7 +25,7 @@ function Noryn_Update_Status() {
     activities: [
       {
         name: Noryn_Status_List[Noryn_Status_Index],
-        type: ActivityType.Watching,
+        type: ActivityType.Custom,
       },
     ],
     status: 'dnd',
