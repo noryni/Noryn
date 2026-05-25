@@ -6,7 +6,7 @@ const Noryn_Client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
 const Noryn_App = Express();
-const Noryn_Port = process.env.Key || 3000;
+const Noryn_Port = process.env.PORT || 3000; // Holy dumb ahh 😭
 Noryn_App.get('/', (Noryn_Request, Noryn_Response) => {
   Noryn_Response.sendFile(
     Path.join(__dirname, '../../Website/Run.html')
@@ -23,7 +23,7 @@ const Noryn_Status_List = [
 ];
 let Noryn_Status_Index = 0;
 async function Noryn_Login() {
-  await Noryn_Client.login(process.env.Access);
+  await Noryn_Client.login(process.env.Key);
 }
 function Noryn_Update_Status() {
   Noryn_Client.user.setPresence({
