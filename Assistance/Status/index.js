@@ -18,7 +18,7 @@ const Noryn_Status_List = [
   'http://dsc.gg/getnoryn'
 ];
 let Noryn_Status_Index = 0;
-let statusInterval = null;
+let Noryn_Status_Interval = null;
 function Noryn_Update_Status() {
   if (!Noryn_Client.user) return;
   Noryn_Client.user.setPresence({
@@ -30,24 +30,28 @@ function Noryn_Update_Status() {
     ],
     status: 'dnd',
   });
-  Noryn_Status_Index =
-    (Noryn_Status_Index + 1) % Noryn_Status_List.length;
+  Noryn_Status_Index = (Noryn_Status_Index + 1) % Noryn_Status_List.length;
 }
 async function Noryn_Login() {
   try {
     await Noryn_Client.login(process.env.Key);
+    Noryn_Update_Status();
   } catch (err) {
     console.error('[Noryn] Login failed:', err);
   }
 }
 Noryn_Client.on('ready', () => {
   console.log(`[Noryn] Logged in as ${Noryn_Client.user.tag}`);
-  if (statusInterval) clearInterval(statusInterval);
-  Noryn_Update_Status();
-  statusInterval = setInterval(Noryn_Update_Status, 10000);
+  if (Noryn_Status_Interval) clearInterval(Noryn_Status_Interval);
+  setTimeout(() => {
+    Noryn_Update_Status();
+    Noryn_Status_Interval = setInterval(() => {
+      Noryn_Update_Status();
+    }, 10000);
+  }, 1500);
 });
 Noryn_Client.on('shardResume', () => {
-  console.log('[Noryn] Shard resumed → resetting status');
+  console.log('[Noryn] Shard resumed → fixing status');
   Noryn_Update_Status();
 });
 Noryn_Client.on('reconnecting', () => {
