@@ -14,7 +14,7 @@ Noryn_App.listen(Noryn_Port, () => {
   console.log(`[Noryn] Website online on port ${Noryn_Port}`);
 });
 const Noryn_Status_List = [
- 'Join today or stay forgotten.',
+  'Join today or stay forgotten.',
   'http://dsc.gg/getnoryn'
 ];
 let Noryn_Status_Index = 0;
@@ -35,7 +35,7 @@ function Noryn_Update_Status() {
 async function Noryn_Login() {
   try {
     await Noryn_Client.login(process.env.Key);
-    Noryn_Update_Status();
+    Noryn_Update_Status(); 
   } catch (err) {
     console.error('[Noryn] Login failed:', err);
   }
