@@ -1,0 +1,18 @@
+{
+  "name": "noryn-assistance",
+  "version": "1.0.0",
+  "description": "Official Noryn Server Assistant.",
+  "main": "Status/index.js",
+  "private": true,
+  "scripts": {
+    "start": "node Status/index.js"
+  },
+  "engines": {
+    "node": "20.x"
+  },
+  "dependencies": {
+    "discord.js": "^14.21.0",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0"
+  }
+}
