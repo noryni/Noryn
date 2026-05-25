@@ -6,42 +6,51 @@ const Noryn_Client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
 const Noryn_App = Express();
-const Noryn_Port = process.env.PORT || 3000; // Holy dumb ahh 😭
-Noryn_App.get('/', (Noryn_Request, Noryn_Response) => {
-  Noryn_Response.sendFile(
-    Path.join(__dirname, '../../Website/Run.html')
-  );
+const Noryn_Port = process.env.PORT || 3000;
+Noryn_App.get('/', (req, res) => {
+  res.sendFile(Path.join(__dirname, '../../Website/Run.html'));
 });
 Noryn_App.listen(Noryn_Port, () => {
-  console.log(
-    `[Noryn] - Website online on port ${Noryn_Port}`
-  );
+  console.log(`[Noryn] Website online on port ${Noryn_Port}`);
 });
 const Noryn_Status_List = [
   'Join today or stay forgotten.',
-  'http://dsc.gg/getnoryn' // Lowk brutal
+  'http://dsc.gg/getnoryn'
 ];
 let Noryn_Status_Index = 0;
-async function Noryn_Login() {
-  await Noryn_Client.login(process.env.Key);
-}
+let statusInterval = null;
 function Noryn_Update_Status() {
+  if (!Noryn_Client.user) return;
   Noryn_Client.user.setPresence({
     activities: [
       {
         name: Noryn_Status_List[Noryn_Status_Index],
-        type: ActivityType.Watching
-      }
+        type: ActivityType.Watching,
+      },
     ],
     status: 'dnd',
   });
-  Noryn_Status_Index = (Noryn_Status_Index + 1) % Noryn_Status_List.length;
+  Noryn_Status_Index =
+    (Noryn_Status_Index + 1) % Noryn_Status_List.length;
 }
-Noryn_Client.once('clientReady', () => {
-  console.log(
-    `[Noryn] - Logged in as ${Noryn_Client.user.tag}`
-  );
+async function Noryn_Login() {
+  try {
+    await Noryn_Client.login(process.env.Key);
+  } catch (err) {
+    console.error('[Noryn] Login failed:', err);
+  }
+}
+Noryn_Client.on('ready', () => {
+  console.log(`[Noryn] Logged in as ${Noryn_Client.user.tag}`);
+  if (statusInterval) clearInterval(statusInterval);
   Noryn_Update_Status();
-  setInterval(Noryn_Update_Status, 10000);
+  statusInterval = setInterval(Noryn_Update_Status, 10000);
+});
+Noryn_Client.on('shardResume', () => {
+  console.log('[Noryn] Shard resumed → resetting status');
+  Noryn_Update_Status();
+});
+Noryn_Client.on('reconnecting', () => {
+  console.log('[Noryn] Reconnecting...');
 });
 Noryn_Login();
