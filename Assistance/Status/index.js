@@ -18,7 +18,7 @@ Noryn_App.listen(Noryn_Port, () => {
   );
 });
 const Noryn_Status_List = [
-  'Be diffrent.',
+  'Join today or stay forgotten.',
   'http://dsc.gg/getnoryn' // Lowk brutal
 ];
 let Noryn_Status_Index = 0;
