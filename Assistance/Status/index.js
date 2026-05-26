@@ -29,7 +29,7 @@ function Noryn_Update_Status() {
       activities: [
         {
           name: Current_Status,
-          type: ActivityType.Playing,
+          type: ActivityType.Custom,
         },
       ],
       status: 'dnd',
@@ -40,7 +40,7 @@ function Noryn_Update_Status() {
       activities: [
         {
           name: Current_Status,
-          type: ActivityType.Playing,
+          type: ActivityType.Custom,
         },
       ],
       status: 'dnd',
