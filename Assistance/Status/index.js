@@ -29,17 +29,21 @@ async function Noryn_Send_Status(Message) {
     if (Channel) await Channel.send(Message);
   } catch (Err) {
     console.error('[Noryn] Failed to send status message:', Err);
-  } 
+  }
 }
-function Noryn_Handle_Status_Change(New_Status) {
-  if (Last_Status === New_Status) return;
-  Last_Status = New_Status;
-  if (New_Status === 'dnd') {
+function Noryn_Check_Status() {
+  const Client = Noryn_Client.user;
+  if (!Client) return;
+  const Presence_Status = Client.presence?.status;
+  if (!Presence_Status) return;
+  if (Presence_Status === Last_Status) return;
+  Last_Status = Presence_Status;
+  if (Presence_Status === 'dnd') {
     Noryn_Send_Status(
       '**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**'
     );
   }
-  if (New_Status === 'online') {
+  if (Presence_Status === 'online') {
     Noryn_Send_Status(
       '**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**'
     );
@@ -58,7 +62,6 @@ function Noryn_Update_Status() {
       ],
       status: Presence_Status,
     });
-    Noryn_Handle_Status_Change(Presence_Status);
   }
   if (Noryn_Client_2.user) {
     Noryn_Client_2.user.setPresence({
@@ -70,14 +73,11 @@ function Noryn_Update_Status() {
       ],
       status: Presence_Status,
     });
-    Noryn_Handle_Status_Change(Presence_Status);
   }
-  Noryn_Status_Index =
-    (Noryn_Status_Index + 1) % Noryn_Status_List.length;
+  Noryn_Status_Index = (Noryn_Status_Index + 1) % Noryn_Status_List.length;
 }
 Noryn_Client.on('clientReady', async () => {
   console.log(`[Noryn] Logged in as ${Noryn_Client.user.tag}`);
-  Noryn_Handle_Status_Change('online');
   await Noryn_Send_Status(
     '**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**'
   );
@@ -94,6 +94,9 @@ async function Noryn_Login() {
       setInterval(() => {
         Noryn_Update_Status();
       }, 10000);
+      setInterval(() => {
+        Noryn_Check_Status();
+      }, 5000);
     }, 2000);
   } catch (Err) {
     console.error('[Noryn] Login failed:', Err);
