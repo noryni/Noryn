@@ -1,5 +1,3 @@
-// Why didn't I do that earlier? 😭
-
 const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
 require('dotenv').config();
 const Express = require('express');
@@ -17,7 +15,6 @@ const Noryn_Log_Path = '1512566838834499654';
 const Monitor_Target = ['1508521345409880305', '1508828918327545946'];
 let First_Cache = null;
 let Second_Cache = null;
-let Active_Alert_Messages = {};
 const Noryn_Client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -60,32 +57,37 @@ async function Handle_Presence_Change(Old_Presence, New_Presence) {
     if (!Second_Cache) { Second_Cache = await Noryn_Client_2.channels.fetch(Noryn_Log_Path); }
     if (!First_Cache || !First_Cache.isTextBased()) return;
     if (!Second_Cache || !Second_Cache.isTextBased()) return;
+    const Offline_Text = '**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**';
+    const Online_Text = '**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**';
     if (New_Status === 'dnd') {
-      if (!Active_Alert_Messages[User_Id]) {
+      const Recent_Messages = await First_Cache.messages.fetch({ limit: 10 });
+      const Existing_Alert = Recent_Messages.find(m => m.content === Offline_Text && (
+        (User_Id === Noryn_Client.user?.id && m.author.id === Noryn_Client.user?.id) ||
+        (User_Id === Noryn_Client_2.user?.id && m.author.id === Noryn_Client_2.user?.id)
+      ));
+      if (!Existing_Alert) {
         if (User_Id === Noryn_Client.user?.id) {
-          const Sent_Msg = await First_Cache.send('**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**');
-          Active_Alert_Messages[User_Id] = Sent_Msg;
+          await First_Cache.send(Offline_Text);
         } else if (User_Id === Noryn_Client_2.user?.id) {
-          const Sent_Msg = await Second_Cache.send('**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**');
-          Active_Alert_Messages[User_Id] = Sent_Msg;
+          await Second_Cache.send(Offline_Text);
         }
         console.log(`[Notify] - User ${User_Id} went Offline.`);
       }
     } 
     else if (New_Status === 'online') {
-      if (Active_Alert_Messages[User_Id]) {
+      const Target_Channel = User_Id === Noryn_Client.user?.id ? First_Cache : Second_Cache;
+      const Bot_Id = User_Id === Noryn_Client.user?.id ? Noryn_Client.user?.id : Noryn_Client_2.user?.id;
+      const Recent_Messages = await Target_Channel.messages.fetch({ limit: 25 });
+      const Old_Alert_Message = Recent_Messages.find(Msg => Msg.author.id === Bot_Id && Msg.content === Offline_Text);
+      if (Old_Alert_Message) {
         try {
-          await Active_Alert_Messages[User_Id].edit('**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**');
-          Active_Alert_Messages[User_Id] = null;
+          await Old_Alert_Message.edit(Online_Text);
         } catch (Edit_Error) {
-          console.error(`[Notify] - Could not edit old offline message:`, Edit_Error.message);
+          console.error(`[Notify] - Failed editing historical message:`, Edit_Error.message);
+          await Target_Channel.send(Online_Text);
         }
       } else {
-        if (User_Id === Noryn_Client.user?.id) {
-          await First_Cache.send('**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**');
-        } else if (User_Id === Noryn_Client_2.user?.id) {
-          await Second_Cache.send('**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**');
-        }
+        await Target_Channel.send(Online_Text);
       }
       console.log(`[Notify] - User ${User_Id} went Online.`);
     }
