@@ -54,25 +54,27 @@ async function Handle_Presence_Change(Old_Presence, New_Presence) {
   const New_Status = New_Presence.status || 'offline';
   if (Old_Status === New_Status) return;
   try {
-    if (!First_Cache) {First_Cache = await Noryn_Client.channels.fetch(Noryn_Log_Path);}
-    if (!Second_Cache) {Second_Cache = await Noryn_Client_2.channels.fetch(Noryn_Log_Path);}
+    if (!First_Cache) { First_Cache = await Noryn_Client.channels.fetch(Noryn_Log_Path); }
+    if (!Second_Cache) { Second_Cache = await Noryn_Client_2.channels.fetch(Noryn_Log_Path); }
     if (!First_Cache || !First_Cache.isTextBased()) return;
     if (!Second_Cache || !Second_Cache.isTextBased()) return;
     if (New_Status === 'dnd') {
-      if (User_Id === Noryn_Client.user?.id) {
-        const Sent_Msg = await First_Cache.send('**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**');
-        Active_Alert_Messages[User_Id] = Sent_Msg;
-      } else if (User_Id === Noryn_Client_2.user?.id) {
-        const Sent_Msg = await Second_Cache.send('**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**');
-        Active_Alert_Messages[User_Id] = Sent_Msg;
+      if (!Active_Alert_Messages[User_Id]) {
+        if (User_Id === Noryn_Client.user?.id) {
+          const Sent_Msg = await First_Cache.send('**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**');
+          Active_Alert_Messages[User_Id] = Sent_Msg;
+        } else if (User_Id === Noryn_Client_2.user?.id) {
+          const Sent_Msg = await Second_Cache.send('**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**');
+          Active_Alert_Messages[User_Id] = Sent_Msg;
+        }
+        console.log(`[Notify] - User ${User_Id} went Offline.`);
       }
-      console.log(`[Notify] - User ${User_Id} went Offline.`);
     } 
     else if (New_Status === 'online') {
       if (Active_Alert_Messages[User_Id]) {
         try {
           await Active_Alert_Messages[User_Id].delete();
-          delete Active_Alert_Messages[User_Id];
+          Active_Alert_Messages[User_Id] = null;
         } catch (Delete_Error) {
           console.error(`[Notify] - Could not delete old offline message:`, Delete_Error.message);
         }
@@ -100,10 +102,11 @@ Noryn_Client_2.on('clientReady', () => {
     Monitor_Target.push(Noryn_Client_2.user.id);
   }
 });
-Noryn_Client.on('presenceUpdate', (Old_Presence, New_Presence) => {Handle_Presence_Change(Old_Presence, New_Presence);});
-Noryn_Client_2.on('presenceUpdate', (Old_Presence, New_Presence) => {Handle_Presence_Change(Old_Presence, New_Presence);});
-Noryn_Client.on('shardResume', () => {Noryn_Update_Status();});
-Noryn_Client_2.on('shardResume', () => {Noryn_Update_Status();});
+Noryn_Client.on('presenceUpdate', (Old_Presence, New_Presence) => { 
+  Handle_Presence_Change(Old_Presence, New_Presence); 
+});
+Noryn_Client.on('shardResume', () => { Noryn_Update_Status(); });
+Noryn_Client_2.on('shardResume', () => { Noryn_Update_Status(); });
 async function Noryn_Login() {
   try {
     await Noryn_Client.login(process.env.Key);
