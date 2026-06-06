@@ -65,14 +65,14 @@ async function Handle_Presence_Change(Real_Bot_Client, Log_Path, Old_Presence, N
     console.error(`[Notify] - Error sending update for ${Real_Bot_Client.user?.tag || 'Unknown'}:`, Error_Logs.message);
   }
 }
-Noryn_Client.on('clientReady', async () => {
+Noryn_Client.on('ready', async () => {
   console.log(`[Notify] - Logged in as ${Noryn_Client.user.tag}`);
   if (!Monitor_Target.includes(Noryn_Client.user.id)) {
     Monitor_Target.push(Noryn_Client.user.id);
   }
   try { First_Cache = await Noryn_Client.channels.fetch(Noryn_Log_Path); } catch(e) {}
 });
-Noryn_Client_2.on('clientReady', async () => {
+Noryn_Client_2.on('ready', async () => {
   console.log(`[Notify] - Logged in as ${Noryn_Client_2.user.tag}`);
   if (!Monitor_Target.includes(Noryn_Client_2.user.id)) {
     Monitor_Target.push(Noryn_Client_2.user.id);
