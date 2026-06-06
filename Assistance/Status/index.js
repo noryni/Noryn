@@ -48,31 +48,31 @@ function Noryn_Update_Status() {
 async function Handle_Presence_Change(Real_Bot_Client, Log_Path, Old_Presence, New_Presence) {
   if (!New_Presence || !New_Presence.userId) return;
   const User_Id = New_Presence.userId;
-  if (User_Id !== Real_Bot_Client.user?.id) return;
+  if (!Monitor_Target.includes(User_Id)) return;
   const Old_Status = Old_Presence?.status || 'offline';
   const New_Status = New_Presence.status || 'offline';
   if (Old_Status === New_Status) return;
   try {
     if (New_Status === 'dnd') {
       await Log_Path.send('**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**');
-      console.log(`[Notify] - ${Real_Bot_Client.user.tag} sent Offline message.`);
+      console.log(`[Notify] - ${Real_Bot_Client.user.tag} sent Offline message for target ${User_Id}.`);
     } 
     else if (New_Status === 'online') {
       await Log_Path.send('**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**');
-      console.log(`[Notify] - ${Real_Bot_Client.user.tag} sent Online message.`);
+      console.log(`[Notify] - ${Real_Bot_Client.user.tag} sent Online message for target ${User_Id}.`);
     }
   } catch (Error_Logs) {
     console.error(`[Notify] - Error sending update for ${Real_Bot_Client.user?.tag || 'Unknown'}:`, Error_Logs.message);
   }
 }
-Noryn_Client.on('ready', async () => {
+Noryn_Client.on('clientReady', async () => {
   console.log(`[Notify] - Logged in as ${Noryn_Client.user.tag}`);
   if (!Monitor_Target.includes(Noryn_Client.user.id)) {
     Monitor_Target.push(Noryn_Client.user.id);
   }
   try { First_Cache = await Noryn_Client.channels.fetch(Noryn_Log_Path); } catch(e) {}
 });
-Noryn_Client_2.on('ready', async () => {
+Noryn_Client_2.on('clientReady', async () => {
   console.log(`[Notify] - Logged in as ${Noryn_Client_2.user.tag}`);
   if (!Monitor_Target.includes(Noryn_Client_2.user.id)) {
     Monitor_Target.push(Noryn_Client_2.user.id);
@@ -97,4 +97,5 @@ async function Noryn_Login() {
     console.error('[Noryn] - Login failed:', Err);
   }
 }
+
 Noryn_Login();
