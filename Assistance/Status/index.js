@@ -1,13 +1,11 @@
-// Son 😭, all I needed was memory independence.
-
 const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
 require('dotenv').config();
 const Express = require('express');
 const Path = require('path');
-const Noryn_App = Express();
+const Web_App = Express();
 const Noryn_Port = process.env.PORT || 3000;
-Noryn_App.get('/', (req, res) => { res.sendFile(Path.join(__dirname, '../../Website/Run.html')); });
-Noryn_App.listen(Noryn_Port, () => { console.log(`[Notify] - Website online on port ${Noryn_Port}`); });
+Web_App.get('/', (req, res) => { res.sendFile(Path.join(__dirname, '../../Website/Run.html')); });
+Web_App.listen(Noryn_Port, () => { console.log(`[Notify] - Website online on port ${Noryn_Port}`); });
 const Noryn_Status_List = [
   'Join today or stay forgotten.',
   'http://dsc.gg/getnoryn',
@@ -47,69 +45,42 @@ function Noryn_Update_Status() {
   }
   Noryn_Status_Index = (Noryn_Status_Index + 1) % Noryn_Status_List.length;
 }
-async function Handle_Presence_Change(Old_Presence, New_Presence) {
+async function Handle_Presence_Change(Real_Bot_Client, Log_Path, Old_Presence, New_Presence) {
   if (!New_Presence || !New_Presence.userId) return;
   const User_Id = New_Presence.userId;
-  if (!Monitor_Target.includes(User_Id)) return;
+  if (User_Id !== Real_Bot_Client.user?.id) return;
   const Old_Status = Old_Presence?.status || 'offline';
   const New_Status = New_Presence.status || 'offline';
   if (Old_Status === New_Status) return;
   try {
-    if (!First_Cache) { First_Cache = await Noryn_Client.channels.fetch(Noryn_Log_Path); }
-    if (!Second_Cache) { Second_Cache = await Noryn_Client_2.channels.fetch(Noryn_Log_Path); }
-    if (!First_Cache || !First_Cache.isTextBased()) return;
-    if (!Second_Cache || !Second_Cache.isTextBased()) return;
-    const Offline_Text = '**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**';
-    const Online_Text = '**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**';
     if (New_Status === 'dnd') {
-      const Recent_Messages = await First_Cache.messages.fetch({ limit: 10 });
-      const Existing_Alert = Recent_Messages.find(m => m.content === Offline_Text && (
-        (User_Id === Noryn_Client.user?.id && m.author.id === Noryn_Client.user?.id) ||
-        (User_Id === Noryn_Client_2.user?.id && m.author.id === Noryn_Client_2.user?.id)
-      ));
-      if (!Existing_Alert) {
-        if (User_Id === Noryn_Client.user?.id) {
-          await First_Cache.send(Offline_Text);
-        } else if (User_Id === Noryn_Client_2.user?.id) {
-          await Second_Cache.send(Offline_Text);
-        }
-        console.log(`[Notify] - User ${User_Id} went Offline.`);
-      }
+      await Log_Path.send('**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**');
+      console.log(`[Notify] - ${Real_Bot_Client.user.tag} sent Offline message.`);
     } 
     else if (New_Status === 'online') {
-      const Target_Channel = User_Id === Noryn_Client.user?.id ? First_Cache : Second_Cache;
-      const Bot_Id = User_Id === Noryn_Client.user?.id ? Noryn_Client.user?.id : Noryn_Client_2.user?.id;
-      const Recent_Messages = await Target_Channel.messages.fetch({ limit: 25 });
-      const Old_Alert_Message = Recent_Messages.find(Msg => Msg.author.id === Bot_Id && Msg.content === Offline_Text);
-      if (Old_Alert_Message) {
-        try {
-          await Old_Alert_Message.edit(Online_Text);
-        } catch (Edit_Error) {
-          console.error(`[Notify] - Failed editing historical message:`, Edit_Error.message);
-          await Target_Channel.send(Online_Text);
-        }
-      } else {
-        await Target_Channel.send(Online_Text);
-      }
-      console.log(`[Notify] - User ${User_Id} went Online.`);
+      await Log_Path.send('**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**');
+      console.log(`[Notify] - ${Real_Bot_Client.user.tag} sent Online message.`);
     }
   } catch (Error_Logs) {
-    console.error('[Notify] - Error processing presence update:', Error_Logs.message);
+    console.error(`[Notify] - Error sending update for ${Real_Bot_Client.user?.tag || 'Unknown'}:`, Error_Logs.message);
   }
 }
-Noryn_Client.on('clientReady', () => {
+Noryn_Client.on('clientReady', async () => {
   console.log(`[Notify] - Logged in as ${Noryn_Client.user.tag}`);
   if (!Monitor_Target.includes(Noryn_Client.user.id)) {
     Monitor_Target.push(Noryn_Client.user.id);
   }
+  try { First_Cache = await Noryn_Client.channels.fetch(Noryn_Log_Path); } catch(e) {}
 });
-Noryn_Client_2.on('clientReady', () => {
+Noryn_Client_2.on('clientReady', async () => {
   console.log(`[Notify] - Logged in as ${Noryn_Client_2.user.tag}`);
   if (!Monitor_Target.includes(Noryn_Client_2.user.id)) {
     Monitor_Target.push(Noryn_Client_2.user.id);
   }
+  try { Second_Cache = await Noryn_Client_2.channels.fetch(Noryn_Log_Path); } catch(e) {}
 });
-Noryn_Client.on('presenceUpdate', (Old_Presence, New_Presence) => {Handle_Presence_Change(Old_Presence, New_Presence);});
+Noryn_Client.on('presenceUpdate', (Old_Presence, New_Presence) => {if (First_Cache) Handle_Presence_Change(Noryn_Client, First_Cache, Old_Presence, New_Presence);});
+Noryn_Client_2.on('presenceUpdate', (Old_Presence, New_Presence) => {if (Second_Cache) Handle_Presence_Change(Noryn_Client_2, Second_Cache, Old_Presence, New_Presence);});
 Noryn_Client.on('shardResume', () => { Noryn_Update_Status(); });
 Noryn_Client_2.on('shardResume', () => { Noryn_Update_Status(); });
 async function Noryn_Login() {
