@@ -1,3 +1,5 @@
+// Son 😭, all I needed was memory independence.
+
 const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
 require('dotenv').config();
 const Express = require('express');
