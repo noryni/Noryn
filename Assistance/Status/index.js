@@ -1,3 +1,5 @@
+// Why didn't I do that earlier? 😭
+
 const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
 require('dotenv').config();
 const Express = require('express');
@@ -73,16 +75,17 @@ async function Handle_Presence_Change(Old_Presence, New_Presence) {
     else if (New_Status === 'online') {
       if (Active_Alert_Messages[User_Id]) {
         try {
-          await Active_Alert_Messages[User_Id].delete();
+          await Active_Alert_Messages[User_Id].edit('**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**');
           Active_Alert_Messages[User_Id] = null;
-        } catch (Delete_Error) {
-          console.error(`[Notify] - Could not delete old offline message:`, Delete_Error.message);
+        } catch (Edit_Error) {
+          console.error(`[Notify] - Could not edit old offline message:`, Edit_Error.message);
         }
-      }
-      if (User_Id === Noryn_Client.user?.id) {
-        await First_Cache.send('**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**');
-      } else if (User_Id === Noryn_Client_2.user?.id) {
-        await Second_Cache.send('**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**');
+      } else {
+        if (User_Id === Noryn_Client.user?.id) {
+          await First_Cache.send('**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**');
+        } else if (User_Id === Noryn_Client_2.user?.id) {
+          await Second_Cache.send('**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**');
+        }
       }
       console.log(`[Notify] - User ${User_Id} went Online.`);
     }
@@ -102,9 +105,7 @@ Noryn_Client_2.on('clientReady', () => {
     Monitor_Target.push(Noryn_Client_2.user.id);
   }
 });
-Noryn_Client.on('presenceUpdate', (Old_Presence, New_Presence) => { 
-  Handle_Presence_Change(Old_Presence, New_Presence); 
-});
+Noryn_Client.on('presenceUpdate', (Old_Presence, New_Presence) => {Handle_Presence_Change(Old_Presence, New_Presence);});
 Noryn_Client.on('shardResume', () => { Noryn_Update_Status(); });
 Noryn_Client_2.on('shardResume', () => { Noryn_Update_Status(); });
 async function Noryn_Login() {
