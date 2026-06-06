@@ -4,17 +4,18 @@ const Express = require('express');
 const Path = require('path');
 const Noryn_App = Express();
 const Noryn_Port = process.env.PORT || 3000;
-Noryn_App.get('/', (req, res) => {res.sendFile(Path.join(__dirname, '../../Website/Run.html'));});
-Noryn_App.listen(Noryn_Port, () => {console.log(`[Notify] - Website online on port ${Noryn_Port}`);});
+Noryn_App.get('/', (req, res) => { res.sendFile(Path.join(__dirname, '../../Website/Run.html')); });
+Noryn_App.listen(Noryn_Port, () => { console.log(`[Notify] - Website online on port ${Noryn_Port}`); });
 const Noryn_Status_List = [
   'Join today or stay forgotten.',
   'http://dsc.gg/getnoryn',
 ];
 let Noryn_Status_Index = 0;
-const Noryn_Server_Path = '1488663019754881046'; 
 const Noryn_Log_Path = '1512566838834499654'; 
 const Monitor_Target = ['1508521345409880305', '1508828918327545946'];
-let Last_Statuses = {};
+let First_Cache = null;
+let Second_Cache = null;
+let Active_Alert_Messages = {};
 const Noryn_Client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -45,46 +46,46 @@ function Noryn_Update_Status() {
   }
   Noryn_Status_Index = (Noryn_Status_Index + 1) % Noryn_Status_List.length;
 }
-async function Run_Monitor() {
+async function Handle_Presence_Change(Old_Presence, New_Presence) {
+  if (!New_Presence || !New_Presence.userId) return;
+  const User_Id = New_Presence.userId;
+  if (!Monitor_Target.includes(User_Id)) return;
+  const Old_Status = Old_Presence?.status || 'offline';
+  const New_Status = New_Presence.status || 'offline';
+  if (Old_Status === New_Status) return;
   try {
-    const Server = await Noryn_Client.guilds.fetch(Noryn_Server_Path);
-    const Get_Noryn = await Noryn_Client.channels.fetch(Noryn_Log_Path);
-    const Today = await Noryn_Client_2.channels.fetch(Noryn_Log_Path);
-    if (!Get_Noryn || !Get_Noryn.isTextBased()) return;
-    if (!Today || !Today.isTextBased()) return;
-    for (const User_Id of Monitor_Target) {
-      try {
-        const Member = await Server.members.fetch({ user: User_Id, withPresences: true, force: true });
-        const Real_Status = Member.presence ? Member.presence.status : 'offline';
-        const Old_Status = Last_Statuses[User_Id];
-        if (Real_Status !== Old_Status) {
-          if (Real_Status === 'dnd') {
-            if (User_Id === Noryn_Client.user?.id) {
-              await Today.send('**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**');
-            } else if (User_Id === Noryn_Client_2.user?.id) {
-              await Get_Noryn.send('**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**');
-            } else {
-              await Get_Noryn.send(`⚠️ The user **${Member.user.tag}** is on Do Not Disturb.`);
-            }
-            console.log(`[Notify] - ${Member.user.tag} went DND.`);
-          } else if (Real_Status === 'online') {
-            if (User_Id === Noryn_Client.user?.id) {
-              await Get_Noryn.send('**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**');
-            } else if (User_Id === Noryn_Client_2.user?.id) {
-              await Today.send('**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**');
-            } else {
-              await Get_Noryn.send(`🟢 The user **${Member.user.tag}** is back online!`);
-            }
-            console.log(`[Notify] - ${Member.user.tag} went Online.`);
-          }
-          Last_Statuses[User_Id] = Real_Status;
-        }
-      } catch (User_Error) {
-        console.error(`[Notify] - Failed fetching user ${User_Id}:`, User_Error.message);
+    if (!First_Cache) {First_Cache = await Noryn_Client.channels.fetch(Noryn_Log_Path);}
+    if (!Second_Cache) {Second_Cache = await Noryn_Client_2.channels.fetch(Noryn_Log_Path);}
+    if (!First_Cache || !First_Cache.isTextBased()) return;
+    if (!Second_Cache || !Second_Cache.isTextBased()) return;
+    if (New_Status === 'dnd') {
+      if (User_Id === Noryn_Client.user?.id) {
+        const Sent_Msg = await First_Cache.send('**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**');
+        Active_Alert_Messages[User_Id] = Sent_Msg;
+      } else if (User_Id === Noryn_Client_2.user?.id) {
+        const Sent_Msg = await Second_Cache.send('**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**');
+        Active_Alert_Messages[User_Id] = Sent_Msg;
       }
+      console.log(`[Notify] - User ${User_Id} went Offline.`);
+    } 
+    else if (New_Status === 'online') {
+      if (Active_Alert_Messages[User_Id]) {
+        try {
+          await Active_Alert_Messages[User_Id].delete();
+          delete Active_Alert_Messages[User_Id];
+        } catch (Delete_Error) {
+          console.error(`[Notify] - Could not delete old offline message:`, Delete_Error.message);
+        }
+      }
+      if (User_Id === Noryn_Client.user?.id) {
+        await First_Cache.send('**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**');
+      } else if (User_Id === Noryn_Client_2.user?.id) {
+        await Second_Cache.send('**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**');
+      }
+      console.log(`[Notify] - User ${User_Id} went Online.`);
     }
   } catch (Error_Logs) {
-    console.error('[Notify] - ', Error_Logs.message);
+    console.error('[Notify] - Error processing presence update:', Error_Logs.message);
   }
 }
 Noryn_Client.on('clientReady', () => {
@@ -92,21 +93,17 @@ Noryn_Client.on('clientReady', () => {
   if (!Monitor_Target.includes(Noryn_Client.user.id)) {
     Monitor_Target.push(Noryn_Client.user.id);
   }
-  setInterval(Run_Monitor, 3000);
 });
 Noryn_Client_2.on('clientReady', () => {
   console.log(`[Notify] - Logged in as ${Noryn_Client_2.user.tag}`);
-  
   if (!Monitor_Target.includes(Noryn_Client_2.user.id)) {
     Monitor_Target.push(Noryn_Client_2.user.id);
   }
 });
-Noryn_Client.on('shardResume', () => {
-  Noryn_Update_Status();
-});
-Noryn_Client_2.on('shardResume', () => {
-  Noryn_Update_Status();
-});
+Noryn_Client.on('presenceUpdate', (Old_Presence, New_Presence) => {Handle_Presence_Change(Old_Presence, New_Presence);});
+Noryn_Client_2.on('presenceUpdate', (Old_Presence, New_Presence) => {Handle_Presence_Change(Old_Presence, New_Presence);});
+Noryn_Client.on('shardResume', () => {Noryn_Update_Status();});
+Noryn_Client_2.on('shardResume', () => {Noryn_Update_Status();});
 async function Noryn_Login() {
   try {
     await Noryn_Client.login(process.env.Key);
@@ -118,7 +115,7 @@ async function Noryn_Login() {
       }, 10000);
     }, 2000);
   } catch (Err) {
-    console.error('[Noryn] Login failed:', Err);
+    console.error('[Noryn] - Login failed:', Err);
   }
 }
 Noryn_Login();
