@@ -48,8 +48,10 @@ function Noryn_Update_Status() {
 async function Run_Monitor() {
   try {
     const Server = await Noryn_Client.guilds.fetch(Noryn_Server_Path);
-    const Path = await Noryn_Client.channels.fetch(Noryn_Log_Path);
-    if (!Path || !Path.isTextBased()) return;
+    const Get_Noryn = await Noryn_Client.channels.fetch(Noryn_Log_Path);
+    const Today = await Noryn_Client_2.channels.fetch(Noryn_Log_Path);
+    if (!Get_Noryn || !Get_Noryn.isTextBased()) return;
+    if (!Today || !Today.isTextBased()) return;
     for (const User_Id of Monitor_Target) {
       try {
         const Member = await Server.members.fetch({ user: User_Id, withPresences: true, force: true });
@@ -57,10 +59,22 @@ async function Run_Monitor() {
         const Old_Status = Last_Statuses[User_Id];
         if (Real_Status !== Old_Status) {
           if (Real_Status === 'dnd') {
-            await Path.send(`⚠️ The user **${Member.user.tag}** is currently on Do Not Disturb (treating as offline).`);
+            if (User_Id === Noryn_Client.user?.id) {
+              await Today.send('**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**');
+            } else if (User_Id === Noryn_Client_2.user?.id) {
+              await Get_Noryn.send('**```[Noryn] - Offline 🔴 Connection lost. Please restart the bot.```**');
+            } else {
+              await Get_Noryn.send(`⚠️ The user **${Member.user.tag}** is on Do Not Disturb.`);
+            }
             console.log(`[Notify] - ${Member.user.tag} went DND.`);
           } else if (Real_Status === 'online') {
-            await Path.send(`🟢 The user **${Member.user.tag}** is back online!`);
+            if (User_Id === Noryn_Client.user?.id) {
+              await Get_Noryn.send('**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**');
+            } else if (User_Id === Noryn_Client_2.user?.id) {
+              await Today.send('**```[Noryn] - Online 🟢 The bot is back online and ready to use.```**');
+            } else {
+              await Get_Noryn.send(`🟢 The user **${Member.user.tag}** is back online!`);
+            }
             console.log(`[Notify] - ${Member.user.tag} went Online.`);
           }
           Last_Statuses[User_Id] = Real_Status;
@@ -69,16 +83,23 @@ async function Run_Monitor() {
         console.error(`[Notify] - Failed fetching user ${User_Id}:`, User_Error.message);
       }
     }
-  } catch (Error) {
-    console.error('[Notify] - ', Error.message);
+  } catch (Error_Logs) {
+    console.error('[Notify] - ', Error_Logs.message);
   }
 }
 Noryn_Client.on('clientReady', () => {
   console.log(`[Notify] - Logged in as ${Noryn_Client.user.tag}`);
+  if (!Monitor_Target.includes(Noryn_Client.user.id)) {
+    Monitor_Target.push(Noryn_Client.user.id);
+  }
   setInterval(Run_Monitor, 3000);
 });
 Noryn_Client_2.on('clientReady', () => {
   console.log(`[Notify] - Logged in as ${Noryn_Client_2.user.tag}`);
+  
+  if (!Monitor_Target.includes(Noryn_Client_2.user.id)) {
+    Monitor_Target.push(Noryn_Client_2.user.id);
+  }
 });
 Noryn_Client.on('shardResume', () => {
   Noryn_Update_Status();
@@ -90,7 +111,6 @@ async function Noryn_Login() {
   try {
     await Noryn_Client.login(process.env.Key);
     await Noryn_Client_2.login(process.env.Key1);
-    
     setTimeout(() => {
       Noryn_Update_Status();
       setInterval(() => {
